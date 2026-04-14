@@ -3,7 +3,7 @@ const importBtn = document.getElementById("importBtn");
 const restoreBtn = document.getElementById("restoreBtn");
 const backupList = document.getElementById("backupList");
 
-const MAX_BACKUPS = 3;
+const MAX_BACKUPS = 5;
 
 // ---------- HELPERS ----------
 
