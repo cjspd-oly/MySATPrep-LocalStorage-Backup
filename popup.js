@@ -5,6 +5,17 @@ const backupList = document.getElementById("backupList");
 
 const MAX_BACKUPS = 5;
 
+// ---------- OPEN WEBSITE ----------
+
+// redirect buttons
+document.querySelectorAll("[data-url]").forEach(el => {
+  el.addEventListener("click", () => {
+    chrome.tabs.create({
+      url: el.dataset.url
+    });
+  });
+});
+
 // ---------- TOAST ----------
 
 let toastTimer = null;

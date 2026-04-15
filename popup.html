@@ -29,6 +29,16 @@
         text-align: center;
       }
 
+      h1[data-url] {
+        cursor: pointer;
+        text-decoration: underline;
+        text-decoration-color: #64748b;
+      }
+
+      h1[data-url]:hover {
+        text-decoration-color: #e2e8f0;
+      }
+
       button {
         width: 100%;
         padding: 10px;
@@ -153,12 +163,52 @@
           transform: translateX(-50%) translateY(20px);
         }
       }
+
+      .container {
+        position: relative; /* required */
+      }
+
+      .corner-link {
+        position: fixed;
+        bottom: 6px;
+        right: 6px;
+
+        width: 26px;
+        height: 26px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        cursor: pointer;
+        color: #64748b;
+        border-radius: 6px;
+      }
+
+      .corner-link:hover {
+        background: #1e293b;
+        color: #e2e8f0;
+      }
+
+      /* top-right (near title) */
+      .corner-link.top {
+        top: 6px;
+        right: 6px;
+      }
+
+      /* bottom-right (true corner) */
+      .corner-link.bottom {
+        bottom: 6px;
+        right: 6px;
+      }
     </style>
   </head>
 
   <body>
     <div class="container">
-      <h1>LocalStorage Backup</h1>
+      <h1 data-url="https://github.com/cjspd-oly/MySATPrep-LocalStorage-Backup">
+        LocalStorage Backup
+      </h1>
 
       <button id="exportBtn" class="export">Export</button>
       <button id="importBtn" class="import">Import</button>
@@ -169,6 +219,21 @@
       <button id="restoreBtn" class="restore">Restore Backup</button>
 
       <div class="footer">Keeps 5 backup</div>
+
+      <span
+        class="corner-link"
+        data-url="https://practicesat.vercel.app/questionbank"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M8 16L16 8M16 8H10M16 8V14"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </span>
     </div>
 
     <div id="toast"></div>
