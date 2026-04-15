@@ -1,22 +1,36 @@
+// ======================================================
+// CONFIG
+// ======================================================
+
+const MAX_BACKUPS = 5;
+
+const ALLOWED_HOSTS = [
+  "practicesat.vercel.app",
+  "mysatprep.fun"
+];
+
+// ======================================================
+// DOM ELEMENTS
+// ======================================================
+
 const exportBtn = document.getElementById("exportBtn");
 const importBtn = document.getElementById("importBtn");
 const restoreBtn = document.getElementById("restoreBtn");
 const backupList = document.getElementById("backupList");
 
-const MAX_BACKUPS = 5;
+// ======================================================
+// NAVIGATION (OPEN LINKS)
+// ======================================================
 
-// ---------- OPEN WEBSITE/REPO ----------
-
-// Add links to popup.html
 document.querySelectorAll("[data-url]").forEach(el => {
   el.addEventListener("click", () => {
-    chrome.tabs.create({
-      url: el.dataset.url
-    });
+    chrome.tabs.create({ url: el.dataset.url });
   });
 });
 
-// ---------- TOAST ----------
+// ======================================================
+// TOAST SYSTEM
+// ======================================================
 
 let toastTimer = null;
 
@@ -26,32 +40,63 @@ function showToast(message) {
 
   toast.textContent = message;
 
-  // reset state
   toast.classList.remove("hide", "show");
   void toast.offsetWidth;
 
-  // enter animation
   toast.classList.add("show");
 
-  // clear previous timer
   if (toastTimer) clearTimeout(toastTimer);
 
-  // HOLD for 2 seconds AFTER animation
   toastTimer = setTimeout(() => {
     toast.classList.remove("show");
     toast.classList.add("hide");
-  }, 2000); // ← THIS is your hold time
+  }, 2000);
 }
 
-// ---------- HELPERS ----------
+// ======================================================
+// UTILITIES
+// ======================================================
 
-async function getTab() {
+async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id || !tab?.url) throw new Error("No active tab");
   return tab;
 }
 
-async function saveBackup(data) {
+function isAllowed(url) {
+  try {
+    const hostname = new URL(url).hostname;
+    return ALLOWED_HOSTS.includes(hostname);
+  } catch {
+    return false;
+  }
+}
+
+function getTimestamp() {
+  const now = new Date();
+  const pad = n => n.toString().padStart(2, "0");
+
+  return (
+    now.getFullYear() + "-" +
+    pad(now.getMonth() + 1) + "-" +
+    pad(now.getDate()) + "_" +
+    pad(now.getHours()) + "-" +
+    pad(now.getMinutes()) + "-" +
+    pad(now.getSeconds())
+  );
+}
+
+// ======================================================
+// STORAGE (BACKUPS)
+// ======================================================
+
+async function getBackups() {
   const { backups = [] } = await chrome.storage.local.get("backups");
+  return backups;
+}
+
+async function saveBackup(data) {
+  const backups = await getBackups();
 
   backups.unshift({
     timestamp: Date.now(),
@@ -63,55 +108,64 @@ async function saveBackup(data) {
   await chrome.storage.local.set({ backups });
 }
 
-async function getBackups() {
-  const { backups = [] } = await chrome.storage.local.get("backups");
-  return backups;
-}
-
 async function loadBackups() {
   const backups = await getBackups();
 
   backupList.innerHTML = backups
-    .map(
-      (b, i) =>
-        `<option value="${i}">${new Date(b.timestamp).toLocaleString()}</option>`
+    .map((b, i) =>
+      `<option value="${i}">${new Date(b.timestamp).toLocaleString()}</option>`
     )
     .join("");
 }
 
-// ---------- EXPORT ----------
+// ======================================================
+// PAGE SCRIPT EXECUTION
+// ======================================================
+
+async function executeOnPage(tabId, func, args = []) {
+  const result = await chrome.scripting.executeScript({
+    target: { tabId },
+    func,
+    args
+  });
+
+  return result?.[0]?.result;
+}
+
+function getLocalStorageFromPage() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    data[key] = localStorage.getItem(key);
+  }
+  return data;
+}
+
+function setLocalStorageOnPage(payload) {
+  localStorage.clear();
+  for (const key in payload) {
+    localStorage.setItem(key, payload[key]);
+  }
+}
+
+// ======================================================
+// EXPORT
+// ======================================================
 
 exportBtn.onclick = async () => {
   try {
-    const tab = await getTab();
+    const tab = await getActiveTab();
 
-    const allowed = [
-      "practicesat.vercel.app",
-      "mysatprep.fun"
-    ];
-
-    if (!allowed.some(domain => tab.url.includes(domain))) {
-      showToast("Open practicesat.vercel.app site first");
+    if (!isAllowed(tab.url)) {
+      showToast("Open SAT site first");
       return;
     }
 
-    const result = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        const data = {};
+    const data = await executeOnPage(tab.id, getLocalStorageFromPage);
 
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          data[key] = localStorage.getItem(key);
-        }
-
-        return data;
-      }
-    });
-
-    const data = result[0].result;
-
-    if (!data) throw new Error("No data");
+    if (!data || typeof data !== "object") {
+      throw new Error("Failed to read localStorage");
+    }
 
     await saveBackup(data);
 
@@ -123,10 +177,13 @@ exportBtn.onclick = async () => {
 
     await chrome.downloads.download({
       url,
-      filename: `practicesat-backup-${Date.now()}.json`
+      filename: `practicesat-backup-${getTimestamp()}.json`
     });
 
-    loadBackups();
+    URL.revokeObjectURL(url);
+
+    await loadBackups();
+    showToast("Export successful");
 
   } catch (err) {
     console.error(err);
@@ -134,7 +191,9 @@ exportBtn.onclick = async () => {
   }
 };
 
-// ---------- IMPORT ----------
+// ======================================================
+// IMPORT
+// ======================================================
 
 importBtn.onclick = () => {
   const input = document.createElement("input");
@@ -143,24 +202,23 @@ importBtn.onclick = () => {
   input.onchange = async (e) => {
     try {
       const file = e.target.files[0];
+      if (!file) throw new Error("No file selected");
+
       const text = await file.text();
       const data = JSON.parse(text);
 
-      const tab = await getTab();
+      if (typeof data !== "object") {
+        throw new Error("Invalid backup file");
+      }
 
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        args: [data],
-        func: (payload) => {
-          localStorage.clear();
-          for (const key in payload) {
-            localStorage.setItem(key, payload[key]);
-          }
-        }
-      });
+      const tab = await getActiveTab();
+
+      await executeOnPage(tab.id, setLocalStorageOnPage, [data]);
 
       await saveBackup(data);
-      loadBackups();
+      await loadBackups();
+
+      showToast("Import successful");
 
     } catch (err) {
       console.error(err);
@@ -171,7 +229,9 @@ importBtn.onclick = () => {
   input.click();
 };
 
-// ---------- RESTORE ----------
+// ======================================================
+// RESTORE
+// ======================================================
 
 restoreBtn.onclick = async () => {
   try {
@@ -183,18 +243,15 @@ restoreBtn.onclick = async () => {
       return;
     }
 
-    const tab = await getTab();
+    const tab = await getActiveTab();
 
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      args: [backups[index].data],
-      func: (payload) => {
-        localStorage.clear();
-        for (const key in payload) {
-          localStorage.setItem(key, payload[key]);
-        }
-      }
-    });
+    await executeOnPage(
+      tab.id,
+      setLocalStorageOnPage,
+      [backups[index].data]
+    );
+
+    showToast("Restore successful");
 
   } catch (err) {
     console.error(err);
@@ -202,5 +259,8 @@ restoreBtn.onclick = async () => {
   }
 };
 
+// ======================================================
 // INIT
+// ======================================================
+
 loadBackups();
