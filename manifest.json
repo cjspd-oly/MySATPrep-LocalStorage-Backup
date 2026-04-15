@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "MySATPrep LocalStorage Backup",
+  "name": "PracticeSAT LocalStorage Backup",
   "version": "1.0",
   "description": "Export/import localStorage with backups",
   "permissions": [
@@ -10,8 +10,8 @@
     "downloads"
   ],
   "host_permissions": [
-    "https://www.mysatprep.fun/*",
-    "https://practicesat.vercel.app/*"
+    "https://practicesat.vercel.app/*",
+    "https://www.mysatprep.fun/*"
   ],
   "action": {
     "default_popup": "popup.html",

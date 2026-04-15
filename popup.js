@@ -86,13 +86,12 @@ exportBtn.onclick = async () => {
     const tab = await getTab();
 
     const allowed = [
-      "mysatprep.fun",
-      "practicesat.vercel.app"
+      "practicesat.vercel.app",
+      "mysatprep.fun"
     ];
 
     if (!allowed.some(domain => tab.url.includes(domain))) {
-      showToast("Open mysatprep / practicesat.vercel.app site first");
-      // alert("Open mysatprep / practicesat.vercel.app site first");
+      showToast("Open practicesat.vercel.app site first");
       return;
     }
 
@@ -124,7 +123,7 @@ exportBtn.onclick = async () => {
 
     await chrome.downloads.download({
       url,
-      filename: `mysatprep-backup-${Date.now()}.json`
+      filename: `practicesat-backup-${Date.now()}.json`
     });
 
     loadBackups();
@@ -132,7 +131,6 @@ exportBtn.onclick = async () => {
   } catch (err) {
     console.error(err);
     showToast("Export failed: " + err.message);
-    // alert("Export failed: " + err.message);
   }
 };
 
@@ -167,7 +165,6 @@ importBtn.onclick = () => {
     } catch (err) {
       console.error(err);
       showToast("Import failed: " + err.message);
-      // alert("Import failed: " + err.message);
     }
   };
 
@@ -183,7 +180,6 @@ restoreBtn.onclick = async () => {
 
     if (!backups[index]) {
       showToast("No backup selected");
-      // alert("No backup selected");
       return;
     }
 
@@ -203,7 +199,6 @@ restoreBtn.onclick = async () => {
   } catch (err) {
     console.error(err);
     showToast("Restore failed: " + err.message);
-    // alert("Restore failed: " + err.message);
   }
 };
 
